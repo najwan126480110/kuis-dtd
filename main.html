@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DTD — SERU</title>
+    <style>
+        :root {
+            --primary: #6c2bd9;
+            --secondary: #9333ea;
+            --accent: #facc15;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-light: #6b7280;
+            --correct: #10b981;
+            --wrong: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        
+        .container { width: 100%; max-width: 800px; padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        
+        /* Screens */
+        .screen { display: none; width: 100%; animation: fadeIn 0.4s ease-in-out; }
+        .screen.active { display: flex; flex-direction: column; align-items: center; }
+
+        /* Start Screen */
+        .header-title { font-size: 2.5rem; font-weight: 800; color: var(--primary); text-align: center; margin-bottom: 10px; }
+        .sub-title { font-size: 1.1rem; color: var(--text-light); text-align: center; margin-bottom: 30px; }
+        .input-group { width: 100%; max-width: 400px; margin-bottom: 20px; }
+        .input-group input { width: 100%; padding: 15px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; outline: none; transition: border 0.3s; text-align: center;}
+        .input-group input:focus { border-color: var(--primary); }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border: none; padding: 15px 30px; font-size: 1.2rem; font-weight: 700; border-radius: 12px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(108, 43, 217, 0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(108, 43, 217, 0.4); }
+        .instructions { margin-top: 30px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; max-width: 500px; }
+        .instructions h3 { margin-bottom: 10px; color: var(--primary); }
+        .instructions ul { padding-left: 20px; color: var(--text-light); line-height: 1.6; }
+
+        /* Quiz Screen */
+        .top-bar { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .progress-text { font-weight: 700; color: var(--primary); }
+        .timer { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.2rem; color: var(--text-main); background: #fee2e2; padding: 5px 15px; border-radius: 20px; }
+        .timer.warning { color: var(--wrong); animation: pulse 1s infinite; }
+        .progress-bar-container { width: 100%; height: 8px; background: #e5e7eb; border-radius: 10px; margin-bottom: 30px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
+        
+        .question-card { background: white; width: 100%; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        .question-text { font-size: 1.3rem; font-weight: 600; line-height: 1.6; color: var(--text-main); }
+        
+        .options-grid { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; }
+        .option-btn { background: white; border: 2px solid #e5e7eb; padding: 18px 20px; border-radius: 12px; font-size: 1.1rem; text-align: left; cursor: pointer; transition: all 0.2s; color: var(--text-main); font-weight: 500; display: flex; align-items: center; }
+        .option-btn:hover:not(:disabled) { border-color: var(--primary); background: #f5f3ff; }
+        .option-btn:disabled { cursor: not-allowed; }
+        .option-letter { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; background: #e5e7eb; color: var(--text-main); border-radius: 8px; margin-right: 15px; font-weight: 700; }
+        
+        .option-btn.selected-correct { border-color: var(--correct); background: #ecfdf5; }
+        .option-btn.selected-wrong { border-color: var(--wrong); background: #fef2f2; }
+        .option-btn.reveal-correct { border-color: var(--correct); background: #ecfdf5; box-shadow: 0 0 0 2px var(--correct); }
+
+        /* Feedback Modal Overlay */
+        .feedback-overlay { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.1); z-index: 100; padding: 30px 20px; animation: slideUp 0.3s ease-out; }
+        .feedback-overlay.active { display: block; }
+        .feedback-content { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        .feedback-status { font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        .status-correct { color: var(--correct); }
+        .status-wrong { color: var(--wrong); }
+        .feedback-explanation { font-size: 1.05rem; color: var(--text-main); line-height: 1.5; }
+        .feedback-ref { font-size: 0.9rem; color: var(--text-light); font-style: italic; }
+        .btn-next { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; align-self: flex-end; width: 100%; max-width: 200px; margin-top: 10px; }
+
+        /* Results Screen */
+        .result-card { background: white; width: 100%; padding: 40px 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center; margin-bottom: 20px; }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(var(--primary) 0%, #e5e7eb 0%); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; position: relative; }
+        .score-inner { width: 120px; height: 120px; border-radius: 50%; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .score-value { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
+        .score-label { font-size: 0.9rem; color: var(--text-light); font-weight: 600; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 30px; }
+        .stat-box { background: #f9fafb; padding: 15px; border-radius: 12px; }
+        .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--text-main); }
+        .stat-title { font-size: 0.85rem; color: var(--text-light); text-transform: uppercase; }
+        .action-buttons { display: flex; gap: 15px; width: 100%; max-width: 500px; justify-content: center; flex-wrap: wrap; margin-top: 20px;}
+        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); padding: 15px 30px; font-size: 1.1rem; font-weight: 700; border-radius: 12px; cursor: pointer; transition: all 0.2s; flex: 1; min-width: 200px;}
+        .btn-outline:hover { background: #f5f3ff; }
+
+        /* Review Screen */
+        .review-list { width: 100%; display: flex; flex-direction: column; gap: 20px; margin-top: 20px; text-align: left;}
+        .review-item { background: white; padding: 20px; border-radius: 12px; border-left: 5px solid var(--wrong); box-shadow: 0 2px 10px rgba(0,0,0,0.05);}
+        .review-item.correct { border-left-color: var(--correct); }
+        .review-q { font-weight: 700; margin-bottom: 10px; }
+        .review-ans { font-size: 0.95rem; margin-bottom: 5px; }
+        .review-exp { font-size: 0.9rem; color: #4b5563; background: #f3f4f6; padding: 10px; border-radius: 8px; margin-top: 10px;}
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        @media (min-width: 600px) { .options-grid { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- START SCREEN -->
+        <div id="screen-start" class="screen active">
+            <h1 class="header-title">DTD — SERU</h1>
+            <p class="sub-title">Uji pemahaman Transformasi Digital, Arsitektur, Logika, Web, AI & Etika (Berdasarkan PPT)</p>
+            <div class="input-group">
+                <input type="text" id="player-name" placeholder="Masukkan Nama Kamu (Opsional)" autocomplete="off">
+            </div>
+            <button class="btn-primary" onclick="startQuiz()">Mulai Kuis (25 Soal)</button>
+            
+            <div class="instructions">
+                <h3>Cara Bermain:</h3>
+                <ul>
+                    <li>Terdapat <strong>25 Soal HOTS</strong> (Analisis, Evaluasi, Mencipta).</li>
+                    <li>Waktu pengerjaan per soal: <strong>30 Detik</strong>.</li>
+                    <li>Pilih satu jawaban paling tepat. Pembahasan akan langsung muncul.</li>
+                    <li>Semua materi bersumber 100% dari PPT Persiapan UTS DTD.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- QUIZ SCREEN -->
+        <div id="screen-quiz" class="screen">
+            <div class="top-bar">
+                <div class="progress-text">Soal <span id="current-q-num">1</span> / 25</div>
+                <div class="timer" id="timer-box">⏱ <span id="time-left">30</span>s</div>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-fill" id="progress-bar"></div>
+            </div>
+            
+            <div class="question-card">
+                <div class="question-text" id="question-text">Memuat pertanyaan...</div>
+            </div>
+            
+            <div class="options-grid" id="options-container">
+                <!-- Options injected via JS -->
+            </div>
+        </div>
+
+        <!-- RESULTS SCREEN -->
+        <div id="screen-result" class="screen">
+            <h2 class="header-title" style="font-size: 2rem;">Kuis Selesai!</h2>
+            <p class="sub-title" id="result-greeting">Kerja bagus, Pejuang DTD!</p>
+            
+            <div class="result-card">
+                <div class="score-circle" id="score-circle">
+                    <div class="score-inner">
+                        <span class="score-value" id="final-score">0</span>
+                        <span class="score-label">POIN</span>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-val" id="stat-correct">0</div>
+                        <div class="stat-title">Benar</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val" id="stat-wrong">0</div>
+                        <div class="stat-title">Salah</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val" id="stat-acc">0%</div>
+                        <div class="stat-title">Akurasi</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn-outline" onclick="showReview()">Tinjau Semua Jawaban</button>
+                <button class="btn-primary" onclick="resetQuiz()">Main Lagi</button>
+            </div>
+        </div>
+
+        <!-- REVIEW SCREEN -->
+        <div id="screen-review" class="screen">
+            <h2 class="header-title" style="font-size: 1.8rem;">Evaluasi Jawaban</h2>
+            <p class="sub-title">Periksa kembali analisis dan penalaran kamu.</p>
+            
+            <div class="review-list" id="review-container">
+                <!-- Review items injected via JS -->
+            </div>
+            
+            <div class="action-buttons" style="margin-top: 30px;">
+                <button class="btn-primary" onclick="resetQuiz()">Main Lagi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FEEDBACK OVERLAY -->
+    <div class="feedback-overlay" id="feedback-overlay">
+        <div class="feedback-content">
+            <div class="feedback-status" id="feedback-status">
+                <!-- Status icon and text -->
+            </div>
+            <div class="feedback-explanation" id="feedback-exp"></div>
+            <div class="feedback-ref" id="feedback-ref"></div>
+            <button class="btn-next" onclick="nextQuestion()">Lanjut Soal</button>
+        </div>
+    </div>
+
+<script>
+/* 
+=========================================
+DATA SOAL (25 SOAL HOTS BERDASARKAN PPT)
+Level: C4 (Analisis), C5 (Evaluasi), C6 (Mencipta)
+=========================================
+*/
+const quizData = [
+    {
+        id: 1, type: "C4", ref: "Slide 4-5",
+        text: "Sebuah klinik medis memutuskan untuk menggunakan pemindai (scanner) guna mengonversi ribuan kartu rekam medis pasien berbahan kertas menjadi file gambar berformat JPG agar aman dari rayap. Berdasarkan konsep 3T, proses spesifik yang dilakukan klinik tersebut adalah...",
+        options: [
+            "Digitalisasi, karena proses penyimpanan menjadi modern.",
+            "Transformasi Digital, karena merubah budaya kerja klinik.",
+            "Digitisasi, karena mengubah bentuk analog (kertas) menjadi digital (JPG).",
+            "Otomatisasi, karena mesin mengambil alih peran perawat."
+        ], correct: 2,
+        explanation: "Digitisasi secara spesifik didefinisikan dalam materi sebagai 'mengubah bentuk analog menjadi digital', dengan contoh foto kertas menjadi scan JPG."
+    },
+    {
+        id: 2, type: "C4", ref: "Slide 4-5",
+        text: "Divisi HRD sebuah perusahaan awalnya memproses pengajuan cuti karyawan menggunakan formulir kertas yang harus ditandatangani manajer secara fisik. Kini, mereka membangun alur kerja baru di mana pengajuan dikirim dan disetujui melalui sistem e-mail. Langkah ini diklasifikasikan sebagai...",
+        options: [
+            "Digitisasi, karena menggunakan teknologi email.",
+            "Digitalisasi, karena mengubah proses manual menjadi proses digital.",
+            "Transformasi Digital, karena berdampak pada bisnis secara menyeluruh.",
+            "Integrasi Digital, karena menggabungkan sistem kertas dan komputer."
+        ], correct: 1,
+        explanation: "Digitalisasi didefinisikan sebagai 'Mengubah proses manual menjadi proses digital', dengan contoh spesifik dari materi: Surat menjadi email."
+    },
+    {
+        id: 3, type: "C5", ref: "Slide 4-5 & 9",
+        text: "Sebuah perpustakaan daerah gagal mendapatkan pengunjung baru meskipun mereka telah memindai seluruh buku fisiknya menjadi PDF (Digitisasi) dan meminjamkannya via e-mail (Digitalisasi). Untuk mencapai tahap 'Transformasi Digital', strategi operasional manakah yang paling tepat untuk dievaluasi dan diimplementasikan?",
+        options: [
+            "Membeli server yang lebih besar untuk menyimpan file PDF.",
+            "Mengganti seluruh staf perpustakaan dengan ahli IT.",
+            "Mengubah model bisnis secara menyeluruh menjadi platform literasi digital berbasis komunitas.",
+            "Mengunggah file PDF ke media sosial secara gratis."
+        ], correct: 2,
+        explanation: "Transformasi Digital adalah perubahan menyeluruh dalam mode bisnis & budaya (contoh di materi: Ojek pangkalan menjadi Gojek). Platform komunitas merupakan perubahan mode bisnis yang relevan, sementara opsi lain hanya sebatas teknis."
+    },
+    {
+        id: 4, type: "C4", ref: "Slide 6 & 10",
+        text: "Dalam simulasi cuaca, sebuah komputer tiba-tiba tidak dapat mengoordinasikan eksekusi instruksi program dan gagal mengatur aliran data antar unit internalnya, padahal kapasitas RAM masih kosong. Berdasarkan Arsitektur Von Neumann, komponen apa yang kemungkinan mengalami kegagalan fungsional?",
+        options: [
+            "Arithmetic Logic Unit (ALU)",
+            "Control Unit (CU)",
+            "Secondary Storage",
+            "Input/Output Interface"
+        ], correct: 1,
+        explanation: "Control Unit (CU) dalam Arsitektur Von Neumann bertugas mengoordinasikan eksekusi instruksi dan mengontrol aliran data antar unit."
+    },
+    {
+        id: 5, type: "C4", ref: "Slide 6 & 10",
+        text: "Saat aplikasi pengedit foto melakukan proses pencerahan (brightness) pada sebuah gambar, komputer harus mengalikan nilai setiap piksel dengan suatu konstanta matematika. Di manakah operasi perkalian ini secara spesifik dieksekusi menurut Arsitektur Von Neumann?",
+        options: [
+            "Control Unit",
+            "Main Memory",
+            "Arithmetic Logic Unit (ALU)",
+            "SSD"
+        ], correct: 2,
+        explanation: "ALU (Arithmetic Logic Unit) adalah bagian dari unit pemrosesan pusat yang bertanggung jawab secara eksklusif untuk menjalankan operasi aritmetika dan logika."
+    },
+    {
+        id: 6, type: "C5", ref: "Slide 7",
+        text: "Seorang editor video baru saja mengunduh aplikasi *editing* terbaru (Aplikasi), namun aplikasi tersebut tidak dapat mendeteksi kartu grafis (Hardware) meskipun kartu grafis terpasang dengan benar. Berdasarkan hierarki Lapisan Komputer, komponen apa yang gagal menjalankan fungsi perantaranya?",
+        options: [
+            "Sistem Operasi",
+            "Pengguna (User)",
+            "Motherboard",
+            "Control Unit"
+        ], correct: 0,
+        explanation: "Sistem Operasi berfungsi sebagai perangkat lunak utama yang mengelola sumber daya dan menjadi perantara antara pengguna/aplikasi dan hardware."
+    },
+    {
+        id: 7, type: "C6", ref: "Slide 8 & 11",
+        text: "Anda ditugaskan merancang *Smart Security System* menggunakan mikrokontroler Arduino. Sistem ini harus menyalakan alarm secara otomatis *hanya* pada malam hari yang gelap jika ada penyusup yang bergerak di halaman. Kombinasi sensor apa yang mutlak dibutuhkan?",
+        options: [
+            "Sensor DHT11 dan Sensor Ultrasonic",
+            "Sensor LDR dan Sensor PIR",
+            "Sensor Gas dan Sensor LDR",
+            "Sensor PIR dan Sensor DHT11"
+        ], correct: 1,
+        explanation: "Berdasarkan materi, Sensor LDR mendeteksi cahaya (untuk kondisi malam/gelap) dan Sensor PIR mendeteksi pergerakan manusia/lingkungan fisik."
+    },
+    {
+        id: 8, type: "C4", ref: "Slide 12",
+        text: "Sebuah termometer digital analog mendeteksi suhu tungku pembakaran di angka desimal 85. Agar mikrokontroler dapat memprosesnya, angka tersebut dikonversi ke dalam sistem biner. Urutan bit yang dihasilkan adalah...",
+        options: [
+            "1010101",
+            "1100101",
+            "1110001",
+            "0101011"
+        ], correct: 0,
+        explanation: "Konversi desimal 85 ke biner: 85 = 64 + 16 + 4 + 1 -> 1010101. (Sesuai latihan konversi di materi)."
+    },
+    {
+        id: 9, type: "C4", ref: "Slide 12 & 15",
+        text: "Saat melakukan *debugging* pada jaringan, teknisi menemukan sinyal error yang direpresentasikan dalam bilangan biner 11100101. Jika dikonversi ke dalam bentuk desimal agar dapat dibaca di buku manual, nilainya adalah...",
+        options: [
+            "197",
+            "229",
+            "245",
+            "235"
+        ], correct: 1,
+        explanation: "Biner 11100101: (1×128) + (1×64) + (1×32) + (0×16) + (0×8) + (1×4) + (0×2) + (1×1) = 128 + 64 + 32 + 4 + 1 = 229."
+    },
+    {
+        id: 10, type: "C5", ref: "Slide 13 & 15",
+        text: "Seorang mahasiswa harus mencadangkan dokumen tugas akhir ke dalam *flashdisk*. Jika flashdisk tersebut hanya memiliki sisa kapasitas 2 GB, dan ukuran rata-rata setiap file dokumen adalah 2.048 KB, berapa banyak file maksimal yang dapat diselamatkan? (Asumsi: 1 GB = 1.024 MB, 1 MB = 1.024 KB)",
+        options: [
+            "512 file",
+            "1.024 file",
+            "2.048 file",
+            "4.096 file"
+        ], correct: 1,
+        explanation: "2 GB = 2.048 MB. Setiap file 2.048 KB = 2 MB. Total file = 2.048 MB / 2 MB = 1.024 file."
+    },
+    {
+        id: 11, type: "C4", ref: "Slide 14 & 15",
+        text: "Sebuah katup pengaman sistem (Y) diprogram dengan logika: Y = (A AND B) OR (NOT C). Jika status saat ini adalah A = 1 (Tekanan tinggi), B = 0 (Suhu normal), dan C = 1 (Sistem manual aktif), apakah katup pengaman (Y) akan terbuka (menghasilkan nilai 1)?",
+        options: [
+            "Ya, karena NOT C bernilai 1.",
+            "Ya, karena A bernilai 1 sehingga keseluruhan sistem menjadi 1.",
+            "Tidak, karena (A AND B) bernilai 0 dan (NOT C) juga bernilai 0.",
+            "Tidak, karena gerbang OR mengharuskan semua input bernilai 1."
+        ], correct: 2,
+        explanation: "Y = (1 AND 0) OR (NOT 1) -> Y = (0) OR (0) = 0. Jadi, sistem menghasilkan nilai 0 (Tidak terbuka)."
+    },
+    {
+        id: 12, type: "C4", ref: "Slide 16 & 20",
+        text: "Ketika seorang mahasiswa mencoba membuka e-learning kampus dengan mengetikkan 'kuliah.itera.ac.id', browser memunculkan peringatan 'Server IP Address Could Not Be Found'. Berdasarkan cara kerja internet, protokol/layanan apa yang gagal menjalankan tugas penerjemahannya?",
+        options: [
+            "Transmission Control Protocol (TCP)",
+            "Hypertext Transfer Protocol (HTTP)",
+            "Domain Name System (DNS)",
+            "Internet Protocol (IP)"
+        ], correct: 2,
+        explanation: "DNS bertugas menerjemahkan nama domain yang mudah diingat manusia menjadi alamat IP numerik. Kegagalan pencarian IP mengindikasikan masalah DNS."
+    },
+    {
+        id: 13, type: "C4", ref: "Slide 17 & 20",
+        text: "Sebuah situs berita berhasil menampilkan teks dan tautan berita dengan lengkap, namun seluruh gambarnya bertumpuk di pojok kiri atas dan teksnya menggunakan font standar berwarna hitam polos. Komponen anatomi website mana yang mengalami kegagalan *loading*?",
+        options: [
+            "HTML",
+            "CSS",
+            "JavaScript",
+            "Database SQL"
+        ], correct: 1,
+        explanation: "CSS (Cascading Style Sheets) adalah teknologi yang mengatur tampilan visual, warna, font, dan tata letak (layout) website."
+    },
+    {
+        id: 14, type: "C5", ref: "Slide 21 & 22",
+        text: "Analisis situasi berikut: Seorang ketua BEM mengirimkan pesan kepada dosen di malam hari berbunyi, 'PAK PINGG!! TOLONG SEGERA ACC PROPOSAL SAYA'. Jika ditinjau dari etika penggunaan teknologi digital, apa akar pelanggaran utama dari pesan tersebut?",
+        options: [
+            "Mengirimkan file proposal yang rentan virus.",
+            "Menuntut dosen merespons secara real-time karena menganggap komunikasi selalu dua arah instan.",
+            "Menggunakan huruf kapital semua yang bermakna berteriak serta nada menuntut tanpa salam.",
+            "Menggunakan kata 'TOLONG' yang tidak sesuai dengan EYD."
+        ], correct: 2,
+        explanation: "Menurut studi kasus di materi, menggunakan huruf kapital semua bermakna berteriak dan menyertakan nada menuntut tanpa salam adalah kesalahan utama etika digital."
+    },
+    {
+        id: 15, type: "C5", ref: "Slide 21 & 22",
+        text: "Aplikasi kesehatan gratis X mengumpulkan data detak jantung penggunanya. Tanpa disadari pengguna, data tersebut dijual ke pihak asuransi untuk menentukan tarif premi. Tindakan aplikasi X melanggar etika digital secara spesifik pada aspek...",
+        options: [
+            "Kebebasan Berekspresi",
+            "Hak Cipta Perangkat Lunak",
+            "Keamanan Jaringan Komputer",
+            "Privasi dan Perlindungan Data Pribadi"
+        ], correct: 3,
+        explanation: "Menjual riwayat pribadi/lokasi tanpa izin yang disadari merupakan pelanggaran Privasi dan Perlindungan Data Pribadi sesuai standar etika digital."
+    },
+    {
+        id: 16, type: "C4", ref: "Slide 23",
+        text: "Seorang analis pemasaran mendapatkan laporan log transaksi berisi angka: '99', '140', dan '500'. Ia kemudian mengolahnya menjadi laporan presentasi berbunyi: 'Total penjualan harian di cabang A mencapai 500 unit'. Berdasarkan teori dasar, status angka '500' dalam laporan presentasi tersebut kini berubah menjadi...",
+        options: [
+            "Data Mentah",
+            "Big Data",
+            "Informasi",
+            "Basis Data"
+        ], correct: 2,
+        explanation: "Informasi adalah data (fakta mentah) yang sudah diolah dan diberi konteks sehingga bermakna."
+    },
+    {
+        id: 17, type: "C4", ref: "Slide 24 & 27",
+        text: "Saat masa pengisian KRS, server akademik kampus mengalami *downtime* (mati mendadak) karena puluhan ribu mahasiswa masuk dalam detik yang bersamaan. Sistem gagal memproses antrean. Karakteristik Big Data manakah yang menjadi akar tantangan utama dalam kasus ini?",
+        options: [
+            "Volume",
+            "Variety",
+            "Veracity",
+            "Velocity"
+        ], correct: 3,
+        explanation: "Velocity mengacu pada kecepatan arus data yang masuk dan harus diproses secara real-time. Lonjakan akses simultan adalah masalah velocity."
+    },
+    {
+        id: 18, type: "C4", ref: "Slide 25 & 28",
+        text: "Seorang karyawan tidak sengaja membuka lampiran email yang mencurigakan. Seketika, seluruh dokumen presentasi dan laporan keuangan di komputernya berubah menjadi format *.locked* dan muncul layar hitung mundur meminta transfer Bitcoin sebesar Rp10 Juta. Karakteristik serangan ini adalah ciri khas dari jenis malware...",
+        options: [
+            "Spyware",
+            "Trojan",
+            "Ransomware",
+            "Adware"
+        ], correct: 2,
+        explanation: "Ransomware adalah malware yang mengenkripsi file korban dan menuntut pembayaran (tebusan/ransom) untuk membuka kunci file tersebut."
+    },
+    {
+        id: 19, type: "C5", ref: "Slide 26",
+        text: "Seorang peretas (hacker) berhasil mencuri *password* email seorang direktur perusahaan. Namun, peretas tersebut tetap gagal masuk ke dalam akun email si direktur. Berdasarkan konsep keamanan *Two-Factor Authentication* (2FA), apa alasan paling logis atas kegagalan tersebut?",
+        options: [
+            "Password tersebut otomatis kadaluarsa setelah dicuri.",
+            "Peretas tidak memiliki komponen 'Sesuatu yang kamu punya' (misalnya HP/Token) milik direktur.",
+            "Direktur menggunakan sistem Backups 3-2-1 untuk emailnya.",
+            "Jaringan peretas diblokir oleh DNS server."
+        ], correct: 1,
+        explanation: "2FA mensyaratkan dua hal: Sesuatu yang kamu tahu (Password) + Sesuatu yang kamu punya (HP/Token). Tanpa akses fisik ke token, password saja tidak cukup."
+    },
+    {
+        id: 20, type: "C4", ref: "Slide 29 & 33",
+        text: "Sebuah platform *streaming* musik awalnya menggunakan logika pemrograman manual untuk merekomendasikan lagu. Kini, mereka menggantinya dengan sistem yang terus mengenali pola selera musik pengguna seiring berjalannya waktu, tanpa perlu di-update secara eksplisit oleh programmer. Kemampuan sistem baru ini paling tepat menggambarkan konsep...",
+        options: [
+            "Artificial Intelligence secara umum",
+            "Machine Learning",
+            "Cloud & Real-time Communication",
+            "Expert System"
+        ], correct: 1,
+        explanation: "Machine Learning (ML) adalah subset dari AI yang berfokus pada sistem yang belajar dari data tanpa diprogram secara eksplisit."
+    },
+    {
+        id: 21, type: "C4", ref: "Slide 30 & 34",
+        text: "Kamera pemantau di jalan tol secara otomatis mampu mendeteksi jenis kendaraan (truk, bus, atau sedan) dan membaca pelat nomor yang melaju dengan kecepatan tinggi. Teknologi cabang AI apa yang sedang diimplementasikan pada kamera tol tersebut?",
+        options: [
+            "Natural Language Processing (NLP)",
+            "Computer Vision",
+            "Fuzzy Logic",
+            "Genetic Algorithm"
+        ], correct: 1,
+        explanation: "Computer Vision adalah teknologi AI yang memungkinkan mesin 'melihat' dan mengenali objek secara visual (seperti Face ID dan sistem pengenalan objek mobil otonom di materi)."
+    },
+    {
+        id: 22, type: "C6", ref: "Slide 14 & 15",
+        text: "Anda diminta merancang aturan akses sebuah brankas pintar (Z). Brankas hanya akan terbuka (Z=1) JIKA Kartu Karyawan valid (A=1) DAN {Pemindaian Mata valid (B=1) ATAU Input PIN benar (C=1)}. Bagaimana persamaan logika yang tepat untuk mengimplementasikan *smart contract* tersebut?",
+        options: [
+            "Z = (A OR B) AND C",
+            "Z = A AND B AND C",
+            "Z = A AND (B OR C)",
+            "Z = (A AND B) OR C"
+        ], correct: 2,
+        explanation: "Sesuai deskripsi: A harus valid (AND) digabung dengan salah satu dari B atau C yang valid (B OR C). Jadi persamaannya Z = A AND (B OR C)."
+    },
+    {
+        id: 23, type: "C4", ref: "Slide 23",
+        text: "Seorang perawat mencatat 'Tekanan darah 120/80' di buku catatan. Saat ini, teks '120/80' yang baru ditulisnya, jika dilihat secara terpisah tanpa mengetahui milik siapa, masih berstatus sebagai...",
+        options: [
+            "Data (Fakta mentah)",
+            "Informasi",
+            "Basis Data",
+            "Analytics"
+        ], correct: 0,
+        explanation: "Angka '120/80' tanpa konteks siapa pemiliknya masih merupakan fakta mentah, belum memiliki konteks lengkap untuk menjadi informasi yang bermakna secara utuh."
+    },
+    {
+        id: 24, type: "C5", ref: "Slide 7 & 17",
+        text: "Jika kita membandingkan 'Sistem Operasi' dalam perangkat keras dengan arsitektur sebuah 'Website', komponen manakah dalam anatomi website yang memiliki peran paling mirip dengan Sistem Operasi sebagai pengelola alur logika instruksi yang tak terlihat?",
+        options: [
+            "HTML (struktur tulang)",
+            "CSS (desain visual)",
+            "Basis Data (penyimpanan)",
+            "PHP/Bahasa Pemrograman (pengatur logika server)"
+        ], correct: 3,
+        explanation: "Sistem operasi mengatur jalannya logika komputer secara fundamental, mirip dengan peran bahasa pemrograman (seperti PHP di sisi server) yang mengatur logika dan aliran data pada website."
+    },
+    {
+        id: 25, type: "C5", ref: "Slide 26 & 28",
+        text: "Untuk mencegah hilangnya data akibat serangan *Ransomware*, strategi mitigasi terbaik yang harus dijalankan perusahaan sesuai konsep materi adalah...",
+        options: [
+            "Memasang Sensor PIR di ruang server.",
+            "Menerapkan Backups 3-2-1 secara disiplin.",
+            "Hanya menggunakan Domain Name System lokal.",
+            "Mengonversi seluruh data biner menjadi desimal."
+        ], correct: 1,
+        explanation: "Backups 3-2-1 disebutkan di materi sebagai strategi pengamanan dan perlindungan data yang vital untuk mencegah kerugian total saat ada ancaman kehilangan data (seperti ransomware)."
+    }
+];
+
+// STATE VARIABLES
+let currentQuestion = 0;
+let score = 0;
+let timer = 30;
+let timerInterval;
+let userAnswers = []; // store results
+let answered = false;
+
+// DOM Elements
+const screenStart = document.getElementById('screen-start');
+const screenQuiz = document.getElementById('screen-quiz');
+const screenResult = document.getElementById('screen-result');
+const screenReview = document.getElementById('screen-review');
+
+const qText = document.getElementById('question-text');
+const optContainer = document.getElementById('options-container');
+const qNum = document.getElementById('current-q-num');
+const timeLeft = document.getElementById('time-left');
+const progressBar = document.getElementById('progress-bar');
+const timerBox = document.getElementById('timer-box');
+
+const overlay = document.getElementById('feedback-overlay');
+const fStatus = document.getElementById('feedback-status');
+const fExp = document.getElementById('feedback-exp');
+const fRef = document.getElementById('feedback-ref');
+
+function switchScreen(target) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    target.classList.add('active');
+}
+
+function startQuiz() {
+    // Reset Variables
+    currentQuestion = 0;
+    score = 0;
+    userAnswers = [];
+    
+    // Shuffle options logic could be added here, but preserving ABCD index is crucial for tracking.
+    
+    switchScreen(screenQuiz);
+    loadQuestion();
+}
+
+function loadQuestion() {
+    answered = false;
+    overlay.classList.remove('active');
+    optContainer.innerHTML = '';
+    
+    const q = quizData[currentQuestion];
+    qNum.textContent = currentQuestion + 1;
+    qText.textContent = q.text;
+    
+    // Progress Bar
+    const progressPercent = (currentQuestion / quizData.length) * 100;
+    progressBar.style.width = progressPercent + '%';
+    
+    // Load Options
+    const letters = ['A', 'B', 'C', 'D'];
+    q.options.forEach((opt, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerHTML = `<span class="option-letter">${letters[index]}</span> <span>${opt}</span>`;
+        btn.onclick = () => checkAnswer(index, btn);
+        optContainer.appendChild(btn);
+    });
+
+    // Reset and Start Timer
+    timer = 30;
+    timeLeft.textContent = timer;
+    timerBox.classList.remove('warning');
+    clearInterval(timerInterval);
+    timerInterval = setInterval(updateTimer, 1000);
+}
+
+function updateTimer() {
+    timer--;
+    timeLeft.textContent = timer;
+    
+    if (timer <= 10) {
+        timerBox.classList.add('warning');
+    }
+    
+    if (timer <= 0) {
+        clearInterval(timerInterval);
+        handleTimeOut();
+    }
+}
+
+function handleTimeOut() {
+    if(answered) return;
+    answered = true;
+    
+    const q = quizData[currentQuestion];
+    
+    // Record as wrong/timeout
+    userAnswers.push({
+        qId: q.id,
+        qText: q.text,
+        selected: null,
+        correct: q.correct,
+        isCorrect: false,
+        exp: q.explanation,
+        ref: q.ref,
+        options: q.options
+    });
+
+    // Disable buttons and show correct
+    const btns = optContainer.querySelectorAll('.option-btn');
+    btns.forEach((b, i) => {
+        b.disabled = true;
+        if(i === q.correct) b.classList.add('reveal-correct');
+    });
+
+    showFeedback(false, null, q);
+}
+
+function checkAnswer(selectedIndex, btnElement) {
+    if(answered) return;
+    answered = true;
+    clearInterval(timerInterval);
+    
+    const q = quizData[currentQuestion];
+    const isCorrect = (selectedIndex === q.correct);
+    
+    if (isCorrect) score += 100; // 100 pts per correct answer
+    
+    // Record
+    userAnswers.push({
+        qId: q.id,
+        qText: q.text,
+        selected: selectedIndex,
+        correct: q.correct,
+        isCorrect: isCorrect,
+        exp: q.explanation,
+        ref: q.ref,
+        options: q.options
+    });
+    
+    // UI Update
+    const btns = optContainer.querySelectorAll('.option-btn');
+    btns.forEach((b, i) => {
+        b.disabled = true;
+        if(i === selectedIndex) {
+            b.classList.add(isCorrect ? 'selected-correct' : 'selected-wrong');
+        }
+        if(!isCorrect && i === q.correct) {
+            b.classList.add('reveal-correct');
+        }
+    });
+    
+    showFeedback(isCorrect, selectedIndex, q);
+}
+
+function showFeedback(isCorrect, selectedIndex, qData) {
+    fStatus.innerHTML = isCorrect ? 
+        `<span class="status-correct">✅ Tepat Sekali!</span>` : 
+        (selectedIndex === null ? `<span class="status-wrong">⏰ Waktu Habis!</span>` : `<span class="status-wrong">❌ Kurang Tepat!</span>`);
+    
+    fExp.innerHTML = `<strong>Pembahasan:</strong> ${qData.explanation}`;
+    fRef.textContent = `Sumber: ${qData.ref} (Tipe Soal: ${qData.type})`;
+    
+    overlay.classList.add('active');
+}
+
+function nextQuestion() {
+    if(currentQuestion < quizData.length - 1) {
+        currentQuestion++;
+        loadQuestion();
+    } else {
+        finishQuiz();
+    }
+}
+
+function finishQuiz() {
+    overlay.classList.remove('active');
+    
+    // Calculate Results
+    const totalQ = quizData.length;
+    const correctCount = userAnswers.filter(a => a.isCorrect).length;
+    const wrongCount = totalQ - correctCount;
+    const accuracy = Math.round((correctCount / totalQ) * 100);
+    
+    document.getElementById('final-score').textContent = score;
+    document.getElementById('stat-correct').textContent = correctCount;
+    document.getElementById('stat-wrong').textContent = wrongCount;
+    document.getElementById('stat-acc').textContent = accuracy + '%';
+    
+    const pName = document.getElementById('player-name').value;
+    const greeting = document.getElementById('result-greeting');
+    if(accuracy >= 80) greeting.textContent = `Luar biasa, ${pName ? pName : 'Pejuang DTD'}! Pemahaman analisismu sangat tajam!`;
+    else if(accuracy >= 50) greeting.textContent = `Kerja bagus, ${pName ? pName : 'Pejuang DTD'}! Tingkatkan lagi ya.`;
+    else greeting.textContent = `Jangan menyerah, ${pName ? pName : 'Pejuang DTD'}! Yuk baca PPT-nya lagi!`;
+
+    // Calculate conic gradient for circle chart
+    const circle = document.getElementById('score-circle');
+    circle.style.background = `conic-gradient(var(--primary) ${accuracy}%, #e5e7eb ${accuracy}%)`;
+
+    switchScreen(screenResult);
+}
+
+function showReview() {
+    const rContainer = document.getElementById('review-container');
+    rContainer.innerHTML = '';
+    
+    const letters = ['A', 'B', 'C', 'D'];
+    
+    userAnswers.forEach((ans, i) => {
+        const item = document.createElement('div');
+        item.className = `review-item ${ans.isCorrect ? 'correct' : ''}`;
+        
+        let selText = ans.selected !== null ? `${letters[ans.selected]}. ${ans.options[ans.selected]}` : "Tidak menjawab (Waktu habis)";
+        let corText = `${letters[ans.correct]}. ${ans.options[ans.correct]}`;
+        
+        item.innerHTML = `
+            <div class="review-q">${i+1}. ${ans.qText}</div>
+            <div class="review-ans" style="color: ${ans.isCorrect ? 'var(--correct)' : 'var(--wrong)'}; font-weight:600;">
+                Jawabanmu: ${selText}
+            </div>
+            ${!ans.isCorrect ? `<div class="review-ans" style="color: var(--correct); font-weight:600;">Kunci: ${corText}</div>` : ''}
+            <div class="review-exp">
+                <strong>Analisis:</strong> ${ans.exp} <br>
+                <small><em>Referensi: ${ans.ref}</em></small>
+            </div>
+        `;
+        rContainer.appendChild(item);
+    });
+    
+    switchScreen(screenReview);
+}
+
+function resetQuiz() {
+    switchScreen(screenStart);
+}
+</script>
+</body>
+</html>
